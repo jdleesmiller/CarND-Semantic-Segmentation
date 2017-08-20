@@ -24,18 +24,21 @@ def load_vgg(sess, vgg_path):
     :param vgg_path: Path to vgg folder, containing "variables/" and "saved_model.pb"
     :return: Tuple of Tensors from VGG model (image_input, keep_prob, layer3_out, layer4_out, layer7_out)
     """
-    # TODO: Implement function
-    #   Use tf.saved_model.loader.load to load the model and weights
     vgg_tag = 'vgg16'
     vgg_input_tensor_name = 'image_input:0'
     vgg_keep_prob_tensor_name = 'keep_prob:0'
     vgg_layer3_out_tensor_name = 'layer3_out:0'
     vgg_layer4_out_tensor_name = 'layer4_out:0'
     vgg_layer7_out_tensor_name = 'layer7_out:0'
-    
-    return None, None, None, None, None
-tests.test_load_vgg(load_vgg, tf)
 
+    tf.saved_model.loader.load(sess, [vgg_tag], vgg_path)
+    vgg = tf.get_default_graph()
+    return (vgg.get_tensor_by_name(vgg_input_tensor_name),
+        vgg.get_tensor_by_name(vgg_keep_prob_tensor_name),
+        vgg.get_tensor_by_name(vgg_layer3_out_tensor_name),
+        vgg.get_tensor_by_name(vgg_layer4_out_tensor_name),
+        vgg.get_tensor_by_name(vgg_layer7_out_tensor_name))
+tests.test_load_vgg(load_vgg, tf)
 
 def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes):
     """
@@ -46,24 +49,48 @@ def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes):
     :param num_classes: Number of classes to classify
     :return: The Tensor for the last layer of output
     """
-    # TODO: Implement function
-    return None
-tests.test_layers(layers)
 
+    vgg_layer3_depth = vgg_layer3_out.get_shape()[3]
+    vgg_layer4_depth = vgg_layer4_out.get_shape()[3]
+    vgg_layer7_depth = vgg_layer7_out.get_shape()[3]
+
+    conv_1x1_depth = vgg_layer7_depth
+    conv_1x1 = tf.layers.conv2d(vgg_layer7_out, conv_1x1_depth, 1, 1)
+
+    # TODO: skip-layer connections?
+
+    num_filters_7 = vgg_layer7_depth
+    transpose_7 = tf.layers.conv2d_transpose(
+      conv_1x1, num_filters_7, (1, 1), (2, 2))
+
+    num_filters_4 = vgg_layer4_depth
+    transpose_4 = tf.layers.conv2d_transpose(
+      transpose_7, num_filters_4, (1, 1), (2, 2))
+
+    transpose_3 = tf.layers.conv2d_transpose(
+      transpose_4, num_classes, (1, 1), (8, 8))
+
+    return transpose_3
+tests.test_layers(layers)
 
 def optimize(nn_last_layer, correct_label, learning_rate, num_classes):
     """
-    Build the TensorFLow loss and optimizer operations.
+    Build the TensorFlow loss and optimizer operations.
     :param nn_last_layer: TF Tensor of the last layer in the neural network
     :param correct_label: TF Placeholder for the correct label image
     :param learning_rate: TF Placeholder for the learning rate
     :param num_classes: Number of classes to classify
     :return: Tuple of (logits, train_op, cross_entropy_loss)
     """
-    # TODO: Implement function
-    return None, None, None
-tests.test_optimize(optimize)
+    logits = tf.reshape(nn_last_layer, [-1, num_classes])
+    onehot_labels = tf.reshape(correct_label, [-1, num_classes])
+    cross_entropy_loss = tf.losses.softmax_cross_entropy(onehot_labels, logits)
 
+    optimizer = tf.train.AdamOptimizer(learning_rate)
+    train_op = optimizer.minimize(cross_entropy_loss)
+
+    return logits, train_op, cross_entropy_loss
+tests.test_optimize(optimize)
 
 def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_loss, input_image,
              correct_label, keep_prob, learning_rate):
@@ -80,12 +107,20 @@ def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_l
     :param keep_prob: TF Placeholder for dropout keep probability
     :param learning_rate: TF Placeholder for learning rate
     """
-    # TODO: Implement function
-    pass
+    for epoch in range(epochs):
+        for inputs, labels in get_batches_fn(batch_size):
+            loss, _ = sess.run(
+                [cross_entropy_loss, train_op], {
+                    input_image: inputs,
+                    correct_label: labels,
+                    keep_prob: 0.7,
+                    learning_rate: 0.1
+                }
+            )
+            print(epoch, loss)
 tests.test_train_nn(train_nn)
 
-
-def run():
+def run(num_epochs=1, batch_size=11):
     num_classes = 2
     image_shape = (160, 576)
     data_dir = './data'
@@ -108,15 +143,41 @@ def run():
         # OPTIONAL: Augment Images for better results
         #  https://datascience.stackexchange.com/questions/5224/how-to-prepare-augment-images-for-neural-network
 
-        # TODO: Build NN using load_vgg, layers, and optimize function
+        # Build NN using load_vgg, layers, and optimize function
+        image_input, keep_prob, \
+            vgg_layer3_out, vgg_layer4_out, vgg_layer7_out = \
+            load_vgg(sess, vgg_path)
 
-        # TODO: Train NN using the train_nn function
+        output_layer = layers(
+            vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes)
 
-        # TODO: Save inference data using helper.save_inference_samples
-        #  helper.save_inference_samples(runs_dir, data_dir, sess, image_shape, logits, keep_prob, input_image)
+        correct_label = tf.placeholder(
+            tf.float32,
+            (None, image_shape[0], image_shape[1], num_classes)
+        )
+        learning_rate = tf.placeholder(tf.float32, ())
+        logits, train_op, cross_entropy_loss = optimize(
+            output_layer, correct_label, learning_rate, num_classes)
+
+        sess.run(tf.global_variables_initializer())
+        train_nn(
+            sess,
+            num_epochs,
+            batch_size,
+            get_batches_fn,
+            train_op,
+            cross_entropy_loss,
+            image_input,
+            correct_label,
+            keep_prob,
+            learning_rate
+        )
+
+        helper.save_inference_samples(
+            runs_dir, data_dir, sess,
+            image_shape, logits, keep_prob, image_input)
 
         # OPTIONAL: Apply the trained model to a video
-
 
 if __name__ == '__main__':
     run()
