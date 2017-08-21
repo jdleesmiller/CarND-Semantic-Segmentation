@@ -50,25 +50,18 @@ def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes):
     :return: The Tensor for the last layer of output
     """
 
-    vgg_layer3_depth = vgg_layer3_out.get_shape()[3]
     vgg_layer4_depth = vgg_layer4_out.get_shape()[3]
-    vgg_layer7_depth = vgg_layer7_out.get_shape()[3]
-
-    conv_1x1_depth = vgg_layer7_depth
-    conv_1x1 = tf.layers.conv2d(vgg_layer7_out, conv_1x1_depth, 1, 1)
-
-    # TODO: skip-layer connections?
-
-    num_filters_7 = vgg_layer7_depth
     transpose_7 = tf.layers.conv2d_transpose(
-      conv_1x1, num_filters_7, (1, 1), (2, 2))
+      vgg_layer7_out, vgg_layer4_depth, (4, 4), (2, 2), padding='SAME')
+    out_7 = transpose_7 + vgg_layer4_out
 
-    num_filters_4 = vgg_layer4_depth
+    vgg_layer3_depth = vgg_layer3_out.get_shape()[3]
     transpose_4 = tf.layers.conv2d_transpose(
-      transpose_7, num_filters_4, (1, 1), (2, 2))
+      out_7, vgg_layer3_depth, (4, 4), (2, 2), padding='SAME')
+    out_4 = transpose_4 + vgg_layer3_out
 
     transpose_3 = tf.layers.conv2d_transpose(
-      transpose_4, num_classes, (1, 1), (8, 8))
+      out_4, num_classes, (16, 16), (8, 8), padding='SAME')
 
     return transpose_3
 tests.test_layers(layers)
@@ -109,7 +102,9 @@ def train_nn(sess, epochs, batch_size, get_batches_fn, train_op,
     :param learning_rate: TF Placeholder for learning rate
     """
     for epoch in range(epochs):
+        batch = 0
         for inputs, labels in get_batches_fn(batch_size):
+            batch += 1
             loss, _ = sess.run(
                 [cross_entropy_loss, train_op], {
                     input_image: inputs,
@@ -118,11 +113,11 @@ def train_nn(sess, epochs, batch_size, get_batches_fn, train_op,
                     learning_rate: learning_rate_value
                 }
             )
-            print(epoch, loss)
+            print(epoch, batch, loss)
 tests.test_train_nn(train_nn)
 
-def run(num_epochs=10, batch_size=13,
-    keep_prob_value=0.5, learning_rate_value=0.001):
+def run(num_epochs=3, batch_size=13,
+    keep_prob_value=0.5, learning_rate_value=0.0001):
     num_classes = 2
     image_shape = (160, 576)
     data_dir = './data'
