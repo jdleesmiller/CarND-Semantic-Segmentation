@@ -111,7 +111,6 @@ def train_nn(sess, epochs, batch_size, get_batches_fn, train_op,
         batch = 0
         for inputs, labels in get_batches_fn(batch_size):
             batch += 1
-            if batch > 3: break
             loss, _ = sess.run(
                 [cross_entropy_loss, train_op], {
                     input_image: inputs,
