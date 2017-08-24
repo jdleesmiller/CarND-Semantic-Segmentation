@@ -41,7 +41,7 @@ def load_vgg(sess, vgg_path):
 tests.test_load_vgg(load_vgg, tf)
 
 def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes,
-    kernel_size_3=16, kernel_size_4=4, kernel_size_7=4, conv_1x1_depth=0):
+    kernel_size_3=8, kernel_size_4=2, kernel_size_7=2, conv_1x1_depth=2048):
     """
     Create the layers for a fully convolutional network.  Build skip-layers using the vgg layers.
     :param vgg_layer7_out: TF Tensor for VGG Layer 3 output
@@ -152,8 +152,7 @@ def build(sess, layer_params={}):
     return train_op, cross_entropy_loss, image_input, correct_label, \
         keep_prob, learning_rate, logits
 
-def run(num_epochs=3, batch_size=13,
-    keep_prob_value=0.5, learning_rate_value=0.0001):
+def run(num_epochs=25, batch_size=13):
     tests.test_for_kitti_dataset(DATA_DIR)
 
     # Download pretrained vgg model
@@ -185,9 +184,7 @@ def run(num_epochs=3, batch_size=13,
             image_input,
             correct_label,
             keep_prob,
-            learning_rate,
-            keep_prob_value,
-            learning_rate_value
+            learning_rate
         )
 
         helper.save_inference_samples(
