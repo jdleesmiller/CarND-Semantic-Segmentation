@@ -1,4 +1,10 @@
 import os.path
+from glob import glob
+import numpy as np
+import random
+import re
+import scipy.misc
+import skimage.exposure
 import tensorflow as tf
 import helper
 import warnings
@@ -151,7 +157,70 @@ def build(sess, layer_params={}):
     return train_op, cross_entropy_loss, image_input, correct_label, \
         keep_prob, learning_rate, logits
 
-def run(num_epochs=25, batch_size=13):
+def identity(image, gt_image):
+    return image, gt_image
+
+def reflect(image, gt_image):
+    return image[:,::-1,:], gt_image[:,::-1,:]
+
+def darken(image, gt_image):
+    return skimage.exposure.adjust_gamma(image, 2), gt_image
+
+def darken_reflect(image, gt_image):
+    image, gt_image = darken(image, gt_image)
+    return reflect(image, gt_image)
+
+def lighten(image, gt_image):
+    return skimage.exposure.adjust_gamma(image, 0.5), gt_image
+
+def lighten_reflect(image, gt_image):
+    image, gt_image = lighten(image, gt_image)
+    return reflect(image, gt_image)
+
+AUGMENTATION_TRANSFORMS = [
+    identity, reflect, darken, darken_reflect, lighten, lighten_reflect]
+
+#
+# Return a generator that yields augmented training data. See the notebook
+# for examples. Based on helper.gen_batch_function.
+#
+def gen_augmented_batch_function(data_folder):
+    def get_augmented_batches_fn(batch_size):
+        image_paths = glob(os.path.join(data_folder, 'image_2', '*.png'))
+        label_paths = {
+            re.sub(r'_(lane|road)_', '_', os.path.basename(path)): path
+            for path in glob(os.path.join(data_folder, 'gt_image_2', '*_road_*.png'))}
+        background_color = np.array([255, 0, 0])
+
+        augmented_image_paths = [
+            (image_path, augmentation_transform)
+            for image_path in image_paths
+            for augmentation_transform in AUGMENTATION_TRANSFORMS
+        ]
+
+        random.shuffle(augmented_image_paths)
+        for batch_i in range(0, len(augmented_image_paths), batch_size):
+            images = []
+            gt_images = []
+            for image_file, transform in augmented_image_paths[batch_i:batch_i+batch_size]:
+                gt_image_file = label_paths[os.path.basename(image_file)]
+
+                image = scipy.misc.imresize(scipy.misc.imread(image_file), IMAGE_SHAPE)
+                gt_image = scipy.misc.imresize(scipy.misc.imread(gt_image_file), IMAGE_SHAPE)
+
+                image, gt_image = transform(image, gt_image)
+
+                gt_bg = np.all(gt_image == background_color, axis=2)
+                gt_bg = gt_bg.reshape(*gt_bg.shape, 1)
+                gt_image = np.concatenate((gt_bg, np.invert(gt_bg)), axis=2)
+
+                images.append(image)
+                gt_images.append(gt_image)
+
+            yield np.array(images), np.array(gt_images)
+    return get_augmented_batches_fn
+
+def run(num_epochs=25, batch_size=13, augment=True):
     tests.test_for_kitti_dataset(DATA_DIR)
 
     # Download pretrained vgg model
@@ -163,11 +232,11 @@ def run(num_epochs=25, batch_size=13):
 
     with tf.Session() as sess:
         # Create function to get batches
-        get_batches_fn = helper.gen_batch_function(
-            os.path.join(DATA_DIR, 'data_road/training'), IMAGE_SHAPE)
-
-        # OPTIONAL: Augment Images for better results
-        #  https://datascience.stackexchange.com/questions/5224/how-to-prepare-augment-images-for-neural-network
+        data_folder = os.path.join(DATA_DIR, 'data_road/training')
+        if augment:
+            get_batches_fn = gen_augmented_batch_function(data_folder)
+        else:
+            get_batches_fn = helper.gen_batch_function(data_folder, IMAGE_SHAPE)
 
         train_op, cross_entropy_loss, image_input, correct_label, \
             keep_prob, learning_rate, logits = build(sess)
