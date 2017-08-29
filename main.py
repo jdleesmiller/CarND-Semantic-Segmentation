@@ -47,7 +47,7 @@ def load_vgg(sess, vgg_path):
 tests.test_load_vgg(load_vgg, tf)
 
 def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes,
-    kernel_size_3=8, kernel_size_4=2, kernel_size_7=2, conv_1x1_depth=2048):
+    kernel_size_3=8, kernel_size_4=4, kernel_size_7=4, conv_1x1_depth=0):
     """
     Create the layers for a fully convolutional network.  Build skip-layers using the vgg layers.
     :param vgg_layer7_out: TF Tensor for VGG Layer 3 output
