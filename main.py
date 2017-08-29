@@ -220,7 +220,7 @@ def gen_augmented_batch_function(data_folder):
             yield np.array(images), np.array(gt_images)
     return get_augmented_batches_fn
 
-def run(num_epochs=25, batch_size=13, augment=True):
+def run(num_epochs=16, batch_size=13, augment=True):
     tests.test_for_kitti_dataset(DATA_DIR)
 
     # Download pretrained vgg model
