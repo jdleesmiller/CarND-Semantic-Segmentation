@@ -230,7 +230,10 @@ def run(num_epochs=25, batch_size=13, augment=True):
     # You'll need a GPU with at least 10 teraFLOPS to train on.
     #  https://www.cityscapes-dataset.com/
 
-    with tf.Session() as sess:
+    config = tf.ConfigProto()
+    config.graph_options.optimizer_options.global_jit_level = \
+        tf.OptimizerOptions.ON_1
+    with tf.Session(config=config) as sess:
         # Create function to get batches
         data_folder = os.path.join(DATA_DIR, 'data_road/training')
         if augment:
