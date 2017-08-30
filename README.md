@@ -71,7 +71,9 @@ The top 3 results were
    'max_epochs_without_progress': 3}),
 ```
 
-The results on the test set for the top selection were not bad. Many of the mistakes involved shadows, which motivated some augmentation.
+It is notable that the top result had a lower (worse) mean IOU than the second result but a lower (better) loss, and also that the third-best result by loss omitted the 1x1 convolution (by setting its depth to 0).
+
+The results on the test set for the best result by loss were not bad. The full run with main.py required 29m55.069s. Many of the mistakes involved shadows, which helped advise which transformations might be useful for augmentation.
 
 #### With Augmented Data
 
@@ -80,9 +82,11 @@ The transformations were;
 - darken it with gamma correction
 - lighten it with gamma correction
 
-The grid was the same, except that I omitted the smallest learning rate, since it was very slow and did not score well in the first grid.
+These transformations provided 6x the training data. I also changed the training / validation split from 80/20 to 70/30 for this grid.
 
-The top 3 were:
+The search grid was the same, except that I omitted the smallest learning rate, since it was very slow and did not score well in the first grid. I also enabled the JIT compiler for this grid, which seemed to reduce CPU load somewhat but did not make much difference to the overall runtime.
+
+The top 3 grid results were:
 ```
 ({'best_epoch': 16,
    'best_mean_iou': 0.87002838068994981,
@@ -125,71 +129,9 @@ The top 3 were:
   'max_epochs_without_progress': 3}),
 ```
 
-So, with augmentation, we achieved a higher (better) IOU, and used slightly larger kernels on the 4 and 7 transposed convolution layers (more parameters). The number of training epochs before the onset of overfitting was also reduced.
+With augmentation, the top result had a higher (better) mean IOU, used slightly larger kernels on the 4 and 7 transposed convolution layers and omitted the 1x1 convolution layer. The number of training epochs before the onset of overfitting was also reduced, but each epoch had 6x as much data.
 
-### Setup
-
-```
-ssh ubuntu@...
-wget http://kitti.is.tue.mpg.de/kitti/data_road.zip
-unzip data_road.zip
-mv data_road data
-mv data_road.zip ..
-
-lsblk
-sudo mkdir /data
-sudo mount /dev/xvdf /data/
-sudo mount /dev/xvdba /data/
-conda install -c conda-forge tqdm
-
-cd /data/CarND-Semantic-Segmentation
-jupyter notebook --generate-config
-vi /home/ubuntu/.jupyter/jupyter_notebook_config.py
-edit to set `c.NotebookApp.ip = '*'`
-jupyter notebook
-copy URL and paste host name
-```
-
-
-```
-grid_1: CPU training for a couple of settings to test
-
-Example training output:
-{'min_epochs_without_progress': 3, 'kernel_size_4': 4, 'max_epochs': 10, 'batch_size': 13, 'keep_prob': 0.5, 'conv_1x1_depth': 0, 'learning_rate': 0.0001, 'kernel_size_3': 16, 'kernel_size_7': 4}
-INFO:tensorflow:Restoring parameters from b'./data/vgg/variables/variables'
-```
-
-```
-grid_2: GPU training on a p2.xlarge (Tesla K80)
-note: min_epochs_... should be max_epochs_...
-
-full trained and tested in
-29m55.069s
-
-results in runs/1503612139.8536005
-pretty good; passing; some challenges on shadows
-maybe try augmentation
-```
-
-```
-grid_3: GPU training on a p2.xlarge (Tesla K80)
-- with augmentation (5 additional examples per training example)
-- but augmentation on both training and validation sets... losses quite low,
-suggesting overfitting
-- partial run; best solutions identified were
-
-
-
-
-grid_4: like grid_3, but with a 70/30 split and augmentation only on the
-training data (not validation data)
-
-Best solutions:
-
-
-main run took 118m9.826s on the first result
-71m24.706s on the second
-```
+This provided the parameters for the final submission. Training took 118m9.826s with the augmented dataset.
 
 ### Setup
 ##### Frameworks and Packages
