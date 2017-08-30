@@ -16,16 +16,16 @@ All training was on a p2.xlarge (Tesla K80). The batch size of 13 was selected t
 I ran a grid search over
 ```
 params_dict = {
-        'batch_size': [13],
-        'min_epochs_without_progress': [3],
-        'max_epochs': [50],
-        'keep_prob': [0.5],
-        'learning_rate': [0.001, 0.0001, 0.00001],
-        'kernel_size_3': [8, 16],
-        'kernel_size_4': [2, 4],
-        'kernel_size_7': [2, 4],
-        'conv_1x1_depth': [0, 2048, 4096]
-    }
+    'batch_size': [13],
+    'min_epochs_without_progress': [3],
+    'max_epochs': [50],
+    'keep_prob': [0.5],
+    'learning_rate': [0.001, 0.0001, 0.00001],
+    'kernel_size_3': [8, 16],
+    'kernel_size_4': [2, 4],
+    'kernel_size_7': [2, 4],
+    'conv_1x1_depth': [0, 2048, 4096]
+}
 ```
 
 The top 3 results were
