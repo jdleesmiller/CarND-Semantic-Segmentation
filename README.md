@@ -3,11 +3,11 @@
 
 In this project, you'll label the pixels of a road in images using a Fully Convolutional Network (FCN).
 
-### Notes
+### Writeup for this Submission
 
-The architecture is essentially as described in lecture. I was not sure whether `vgg_layer7_out` already included a 1x1 convolution, so I allowed the length of the layer's 1x1 convolution to be zero in order to omit it.
+The architecture is essentially as described in lecture. I was not sure whether `vgg_layer7_out` already included a 1x1 convolution, so I allowed the length of the layer's 1x1 convolution to be zero in order to omit it. The hyperparameters and that aspect of the architecture were chosen following two grid searches.
 
-The hyperparameters and that aspect of the architecture were chosen following two grid searches. The code for the grid search is in the `results.ipynb` notebook. It splits the training set 80/20 into training and validation sets and records the loss and mean Intersection-Over-Union for the validation set. The top results are selected based on the validation loss.
+The code for the grid search is in the `results.ipynb` notebook. It splits the training set 80/20 into training and validation sets and records the loss and mean Intersection-Over-Union for the validation set. The top results are selected based on the validation loss.
 
 All training was on a p2.xlarge (Tesla K80). The batch size of 13 was selected to avoid running out of memory on the GPU; much larger batches resulted in errors, and `nvidia-smi` reported memory usage fairly close to full for batches of 13.
 
@@ -82,7 +82,7 @@ The transformations were;
 - darken it with gamma correction
 - lighten it with gamma correction
 
-These transformations provided 6x the training data. I also changed the training / validation split from 80/20 to 70/30 for this grid.
+These transformations provided 6x the training data. Examples of the transformed data are included in `results.ipynb`. I also changed the training / validation split from 80/20 to 70/30 for this grid.
 
 The search grid was the same, except that I omitted the smallest learning rate, since it was very slow and did not score well in the first grid. I also enabled the JIT compiler for this grid, which seemed to reduce CPU load somewhat but did not make much difference to the overall runtime.
 

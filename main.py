@@ -157,6 +157,11 @@ def build(sess, layer_params={}):
     return train_op, cross_entropy_loss, image_input, correct_label, \
         keep_prob, learning_rate, logits
 
+#
+# Define transforms for training data augmentation. Each function takes an
+# input image and the corresponding ground truth image and returns each one
+# after transformation.
+#
 def identity(image, gt_image):
     return image, gt_image
 
@@ -181,8 +186,8 @@ AUGMENTATION_TRANSFORMS = [
     identity, reflect, darken, darken_reflect, lighten, lighten_reflect]
 
 #
-# Return a generator that yields augmented training data. See the notebook
-# for examples. Based on helper.gen_batch_function.
+# Return a generator that yields augmented training data. See the results.ipynb
+# notebook for examples. Based on helper.gen_batch_function.
 #
 def gen_augmented_batch_function(data_folder):
     def get_augmented_batches_fn(batch_size):
@@ -226,10 +231,6 @@ def run(num_epochs=16, batch_size=13, augment=True):
     # Download pretrained vgg model
     helper.maybe_download_pretrained_vgg(DATA_DIR)
 
-    # OPTIONAL: Train and Inference on the cityscapes dataset instead of the Kitti dataset.
-    # You'll need a GPU with at least 10 teraFLOPS to train on.
-    #  https://www.cityscapes-dataset.com/
-
     config = tf.ConfigProto()
     config.graph_options.optimizer_options.global_jit_level = \
         tf.OptimizerOptions.ON_1
@@ -261,8 +262,6 @@ def run(num_epochs=16, batch_size=13, augment=True):
         helper.save_inference_samples(
             RUNS_DIR, DATA_DIR, sess,
             IMAGE_SHAPE, logits, keep_prob, image_input)
-
-        # OPTIONAL: Apply the trained model to a video
 
 if __name__ == '__main__':
     run()
